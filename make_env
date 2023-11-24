@@ -1,0 +1,15 @@
+include ../make_env
+
+TAG ?= latest
+
+ifdef feature
+	SUFFIX := -${feature}
+endif
+
+CONTAINER_NAME ?= $(shell basename $$(pwd))
+IMG_ID_LOCAL ?= $(CONTAINER_NAME):$(TAG)
+REPO_NAME ?= omicshub
+IMG_ID_REMOTE ?= $(ACCOUNT_URL)/$(REPO_NAME)/$(CONTAINER_NAME)$(SUFFIX):$(TAG)
+
+PORTS ?= -p 8000:8000 
+RUN_ARGS ?= --device=/dev/fuse --privileged --env-file env.list
