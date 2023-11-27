@@ -34,7 +34,23 @@ def miniwdl_submit_awsbatch(argv):
             file=sys.stderr,
         )
         sys.exit(1)
-    aws_batch = boto3.client("batch", region_name=aws_region_name)
+
+    try:
+        sts_client = boto3.client("sts", region_name=aws_region_name)
+        assumed_role=sts_client.assume_role(
+                        RoleArn=os.getenv("MINIWDL_AWS_CLI_ROLE_ARN"),
+                        RoleSessionName="MiniwdlAwsAssumeRole"
+                        )
+        creds = assumed_role.get('Credentials')
+        aws_batch = boto3.client("batch", 
+                        region_name=aws_region_name, 
+                        aws_access_key_id=creds.get('AccessKeyId'),
+                        aws_secret_access_key=creds.get('SecretAccessKey'),
+                        aws_session_token=creds.get('SessionToken')
+                    )
+    except Exception as error:
+        raise Exception("Failed to initialize batch client") from error
+
     detect_tags_args(aws_batch, args)
 
     if verbose:
