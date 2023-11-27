@@ -14,7 +14,7 @@ import shlex
 from datetime import datetime
 from collections import defaultdict
 import boto3
-from ._util import detect_aws_region, randomize_job_name, END_OF_LOG, efs_id_from_access_point
+from ._util import detect_aws_region, randomize_job_name, END_OF_LOG, efs_id_from_access_point, get_botocore_client
 
 
 def miniwdl_submit_awsbatch(argv):
@@ -34,7 +34,9 @@ def miniwdl_submit_awsbatch(argv):
             file=sys.stderr,
         )
         sys.exit(1)
-    aws_batch = boto3.client("batch", region_name=aws_region_name)
+
+    aws_batch = get_botocore_client("batch")
+
     detect_tags_args(aws_batch, args)
 
     if verbose:
@@ -634,7 +636,7 @@ class CloudWatchLogsFollower:
         self.stream_name = stream_name
         self._newest_timestamp = None
         self._newest_event_ids = set()
-        self._client = boto_session.client("logs", region_name=region_name)
+        self._client = get_botocore_client("logs", session=boto_session)
 
     def new_events(self):
         event_ids_per_timestamp = defaultdict(set)

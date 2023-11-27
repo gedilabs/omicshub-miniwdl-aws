@@ -7,6 +7,27 @@ import requests
 import subprocess
 from WDL._util import StructuredLogMessage as _
 
+def get_botocore_client(client_type, session=None, config=None):
+    try:
+        aws_region_name = detect_aws_region(None)
+        sts_client = boto3.client("sts", region_name=aws_region_name)
+        assumed_role=sts_client.assume_role(
+                        RoleArn=os.getenv("MINIWDL_AWS_CLI_ROLE_ARN"),
+                        RoleSessionName="MiniwdlAwsAssumeRole")
+        creds = assumed_role.get('Credentials')
+
+        boto3_session = boto3.Session() if not session else session
+        cl = boto3_session.client(client_type, 
+                        region_name=aws_region_name, 
+                        aws_access_key_id=creds.get('AccessKeyId'),
+                        aws_secret_access_key=creds.get('SecretAccessKey'),
+                        aws_session_token=creds.get('SessionToken'),
+                        config=config)
+
+    except Exception as error:
+        raise Exception(f"Failed to initialize {client_type} client") from error
+
+    return cl
 
 def detect_aws_region(cfg):
     if cfg and cfg.has_option("aws", "region") and cfg.get("aws", "region"):
@@ -48,7 +69,7 @@ def randomize_job_name(job_name):
 def efs_id_from_access_point(region_name, fsap_id):
     # Resolve the EFS access point id (fsap-xxxx) to the associated file system id (fs-xxxx). Saves
     # user from having to specify both.
-    aws_efs = boto3.Session().client("efs", region_name=region_name)
+    aws_efs = get_botocore_client("efs")
     desc = aws_efs.describe_access_points(AccessPointId=fsap_id)
     assert len(desc.get("AccessPoints", [])) == 1
     desc = desc["AccessPoints"][0]
